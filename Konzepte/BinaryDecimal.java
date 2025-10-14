@@ -8,24 +8,33 @@ public class BinaryDecimal {
     int[] binarWert = {4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1};
     ArrayList<Integer> binarAusgabe = new ArrayList<>();
 
-    System.out.print("Dezimalwert? (von 1 bis 8191) : ");
+    System.out.print("Dezimalwert? : ");
     Scanner dezimalWertScanner = new Scanner(System.in);
     String dezimalWertString = dezimalWertScanner.nextLine();
     int dezimalWertInt = Integer.parseInt(dezimalWertString);
 
-    for (int i = 0; i < binarWert.length; i++) {
-        if (dezimalWertInt >= binarWert[i]) {
-            dezimalWertInt -= binarWert[i];
-            binarAusgabe.add(1);
-        } else {
-            binarAusgabe.add(0);
-        }
-    }
+//    for (int i = 0; i < binarWert.length; i++) {
+//        if (dezimalWertInt >= binarWert[i]) {
+//            dezimalWertInt -= binarWert[i];
+//            binarAusgabe.add(1);
+//        } else {
+//            binarAusgabe.add(0);
+//        }
+//    }
+//
+//    System.out.print("Binï¿½r: ");
+//    for (int b : binarAusgabe) {
+//      System.out.print(b);
+//    }
 
-    System.out.print("Binär: ");
-    for (int b : binarAusgabe) {
-      System.out.print(b);
+    long binaer = 0;
+    long digit = 1;
+    while(dezimalWertInt!=0) {
+        binaer += (dezimalWertInt % 2) * digit;
+        dezimalWertInt /= 2;
+        digit *= 10;
     }
+    System.out.println("BinÃ¤r: " + binaer);
     
 // end of while
     
