@@ -16,6 +16,8 @@ public class FirstSwing{
 
     // Erzeuge einen Button
     JButton button = new JButton("Klick mich");
+    JButton button2 = new JButton("2");
+    JButton button3 = new JButton("3");
 
     // Erzeuge ein AuswahlMenue
       String[] optionen = {"Option 1","Option 2","Option 3"};
@@ -44,8 +46,10 @@ public class FirstSwing{
 
     // Elemente in das Fenster einfügen
     frame.getContentPane().add(label, "North");
-    frame.getContentPane().add(button, "South");
     frame.getContentPane().add(select, "Center");
+    frame.getContentPane().add(button, "South");
+    frame.getContentPane().add(button2, "East");
+    frame.getContentPane().add(button3, "West");
 
     // Fenster sichtbar machen
     frame.setVisible(true);
