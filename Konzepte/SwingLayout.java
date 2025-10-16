@@ -43,7 +43,6 @@ public class SwingLayout {
         
         // Menu Bar
         JMenuBar mnHauptmenue = new JMenuBar();
-        //frame.getContentPane().add(mnHauptmenue, "North");
         frame.setJMenuBar(mnHauptmenue);
 
         // Tool Bar
@@ -52,9 +51,10 @@ public class SwingLayout {
         frame.getContentPane().add(toolBar, BorderLayout.PAGE_START);
 
         // Top Panel
-        topPanel = new JPanel(new BorderLayout());
-        topPanel.setPreferredSize(new Dimension(800, 80)); 
-        frame.add(topPanel, BorderLayout.NORTH);
+        //topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        //topPanel.setPreferredSize(new Dimension(800, 45));
+        //topPanel.add(toolBar);
+        //frame.add(topPanel, BorderLayout.NORTH);
         
         // South Panel
         pnSouth = new JPanel();
