@@ -1,26 +1,30 @@
 import java.io.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.geom.Ellipse2D;
+import java.awt.print.PrinterException;
 import javax.swing.*;
 import javax.swing.undo.*;
 import javax.swing.event.*;
 import javax.swing.text.*;
 import javax.swing.text.rtf.RTFEditorKit;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 
 public class SwingLayout {
 
     // ### Instance variable ### //
     private JFrame frame;
-    // private JTextArea textArea;
+    // private JTextArea textArea; , change to JTextPane (better for Rich Text Format)
     private JTextPane textArea;
-    private StyledDocument doc;
+    private StyledDocument doc; // no need to initial like an object, can use doc = textPane.getStyleDocument(); right away
     private JLabel lbInfo;
     private File currentFile; // to store the file path 
+    private JPanel topPanel;
     private JPanel pnSouth;
     private JToolBar toolBar;
     private JLabel lbCursorPos;
-    private UndoManager undoMng = new UndoManager();
-    private JPanel topPanel;
+    private UndoManager undoManager = new UndoManager(); // can create an object already, since the object remains itself (no furthur customization)
     private JComboBox<String> fontCombo;
     private JComboBox<Integer> sizeCombo;
     private JButton colorBtn;
@@ -33,28 +37,60 @@ public class SwingLayout {
     * Instead of -> JFrame frame = new JFrame("Designbeispiel");
     */
 
-    // ### Constructor ### //
-    // Constructor has the same name as Class, no return 
+    // ### Constructor - Constructor has the same name as Class, no return 
     public SwingLayout() {
         // Frame
         frame = new JFrame("Text Editor");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(800,600);
+        frame.setMinimumSize(new Dimension(400, 300)); 
         
         // Menu Bar
         JMenuBar mnHauptmenue = new JMenuBar();
         frame.setJMenuBar(mnHauptmenue);
+        
+        // Top Panel
+        // topPanel = new JPanel(new BorderLayout());
+        // topPanel.setPreferredSize(new Dimension(800, 80)); 
+        // frame.add(topPanel, BorderLayout.NORTH);
+
 
         // Tool Bar
         toolBar = new JToolBar();
-        placeToolBar(toolBar);
-        frame.getContentPane().add(toolBar, BorderLayout.PAGE_START);
 
-        // Top Panel
-        //topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        //topPanel.setPreferredSize(new Dimension(800, 45));
-        //topPanel.add(toolBar);
+        toolBar.setLayout(new FlowLayout(FlowLayout.LEFT));
+        //toolBar.setLayout(new FlowLayout(FlowLayout.LEFT));
+        toolBar.setFloatable(false);
+
+        topPanel = new JPanel();
+        //topPanel.setPreferredSize(new Dimension(800,70));
+
+        placeToolBar(toolBar);
+        topPanel.add(toolBar);
+        frame.getContentPane().add(toolBar, BorderLayout.PAGE_START);
         //frame.add(topPanel, BorderLayout.NORTH);
+
+        // Listener สำหรับปรับขนาด NORTH ตามความสูงของหน้าต่าง
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                int frameWidth = frame.getWidth();
+                int newHeight = 0;
+
+                if (frameWidth >= 700 ) {
+                    newHeight = 50;
+                } else if (frameWidth <= 700) {
+                    newHeight = 90;
+                } else {
+                            // ถ้าต้องการ สามารถปรับสูงแบบ linear scaling หรือใช้ default
+                            // newHeight = 70; 
+                }
+
+                toolBar.setPreferredSize(new Dimension(frameWidth, newHeight));
+                toolBar.revalidate(); // update layout
+                }
+            });
+
         
         // South Panel
         pnSouth = new JPanel();
@@ -87,13 +123,13 @@ public class SwingLayout {
             }
         });
          */
-        // Replace Text Area with Text Pane
+        // Replace Text Area (.txt) with Text Pane (.rtf) because we want to style texts
 
         updateStyleControls(); 
         doc = textArea.getStyledDocument();
         doc.addUndoableEditListener(new UndoableEditListener() {
             public void undoableEditHappened(UndoableEditEvent e) {
-                undoMng.addEdit(e.getEdit());
+                undoManager.addEdit(e.getEdit());
             }
         });
 
@@ -103,8 +139,8 @@ public class SwingLayout {
         textArea.getInputMap().put(KeyStroke.getKeyStroke("control Z"),"Undo");
         textArea.getActionMap().put("Undo", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
-                if (undoMng.canUndo()){
-                    undoMng.undo();
+                if (undoManager.canUndo()){
+                    undoManager.undo();
                 }
             }
         });
@@ -112,17 +148,81 @@ public class SwingLayout {
         textArea.getInputMap().put(KeyStroke.getKeyStroke("control Y"),"Redo");
         textArea.getActionMap().put("Redo", new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
-                if (undoMng.canRedo()){
-                    undoMng.redo();
+                if (undoManager.canRedo()){
+                    undoManager.redo();
                 }
             }
         });
         
         
-        // Scroll bar
+        // Scroll bar of textAre
         JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         frame.getContentPane().add(scrollPane, "Center");
+
+        // Right panel
+        String[] listItems = {"Eintrag1", "Eintrag2", "Eintrag3", "Eintrag4", "Eintrag5"};
+        JList<String> list = new JList<>(listItems);
+        list.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e){
+                if(e.getClickCount() == 1){
+                    String selectedItem = list.getSelectedValue();
+                    if(selectedItem != null){
+                        int pos = textArea.getCaretPosition();
+                        try {
+                            textArea.getDocument().insertString(pos, selectedItem + "\n", null);
+                            textArea.requestFocus();
+                        } catch (Exception ex) {
+                            // TODO: handle exception
+                            ex.printStackTrace();
+                        }
+                    }
+                }
+            }
+        });
+        JScrollPane listScroll = new JScrollPane(list);
+        listScroll.setPreferredSize(new Dimension(150,0));
+        frame.add(listScroll, BorderLayout.EAST);
+
+        // build a tree        
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Projekt");
+        DefaultMutableTreeNode util1 = new DefaultMutableTreeNode("Hilfsmittel1");
+        DefaultMutableTreeNode util2 = new DefaultMutableTreeNode("Hilfsmittel2");
+        DefaultMutableTreeNode util3 = new DefaultMutableTreeNode("Hilfsmittel3");
+        DefaultMutableTreeNode src1 = new DefaultMutableTreeNode("Quellen1");
+        DefaultMutableTreeNode src2 = new DefaultMutableTreeNode("Quellen2");
+        DefaultMutableTreeNode src3 = new DefaultMutableTreeNode("Quellen3");
+        util1.add(util2);
+        util1.add(util3);
+        src1.add(src2);
+        src1.add(src3);
+        root.add(src1);
+        root.add(util1);
+
+        JTree tree = new JTree(root);
+                // เมื่อเลือก node
+        tree.addTreeSelectionListener(e -> {
+            TreePath path = e.getPath();
+            Object[] nodes = path.getPath();
+            StringBuilder pfad = new StringBuilder();
+
+            for (Object node : nodes) {
+                pfad.append(node.toString());
+                if (node != nodes[nodes.length - 1]) {
+                    pfad.append(" > ");
+                }
+            }
+
+            lbInfo.setText("Path: " + pfad);
+        });
+
+
+
+
+        JScrollPane treeScroll = new JScrollPane(tree);
+        treeScroll.setPreferredSize(new Dimension(150,0));
+        frame.add(treeScroll, BorderLayout.WEST);
+
 
         // Function calls
         placeMenuElements(mnHauptmenue); //textArea, frame
@@ -131,6 +231,52 @@ public class SwingLayout {
     }
 
     // ### Methods ### //
+    
+    private void updateStyleControls() {
+        isUpdatingStyle = true; 
+
+        // # Early Exit - if the document is empty (New File), then set styles (font name, color, size) to default, and not proceed furthur
+        if (textArea.getDocument().getLength() == 0) {  
+            if (fontCombo != null) fontCombo.setSelectedItem("Arial");
+            if (sizeCombo != null) sizeCombo.setSelectedItem(12);
+            if (colorBtn != null) colorBtn.setBackground(Color.BLACK);
+            isUpdatingStyle = false; // close the flag
+        return; // exit
+        }
+        
+        // if the document is not empty (Open File), then ..
+        int pos = textArea.getCaretPosition();
+        StyledDocument doc = textArea.getStyledDocument();
+        Element element;
+        if (pos > 0) {
+            element = doc.getCharacterElement(pos - 1);
+        } else {
+            element = doc.getCharacterElement(pos);
+        }
+
+        AttributeSet as = element.getAttributes();
+
+        // อัปเดต Font
+        String font = StyleConstants.getFontFamily(as);
+        if (fontCombo != null && !font.equals(fontCombo.getSelectedItem())) {
+            fontCombo.setSelectedItem(font);
+        }
+
+        // อัปเดต Size
+        int size = StyleConstants.getFontSize(as);
+        if (sizeCombo != null && size != (Integer) sizeCombo.getSelectedItem()) {
+            sizeCombo.setSelectedItem(size);
+        }
+
+        // สามารถอัปเดตสีได้ด้วยถ้ามีปุ่มเลือกสี
+        Color color = StyleConstants.getForeground(as);
+        colorBtn.setBackground(color);
+        // ✅ เสร็จแล้วปิด flag
+         isUpdatingStyle = false;
+
+        
+    }
+
     private void placeMenuElements(JMenuBar menu){
 
         // *** Menu Datei *** 
@@ -207,8 +353,8 @@ public class SwingLayout {
         // Undo - need the Undomanager
         JMenuItem mnUndo = new JMenuItem("Rückgängig");
         mnUndo.addActionListener(e -> {
-            if (undoMng.canUndo()){
-                undoMng.undo();
+            if (undoManager.canUndo()){
+                undoManager.undo();
             }
         }); 
         mnEdit.add(mnUndo);
@@ -216,8 +362,8 @@ public class SwingLayout {
         // Redo - need the Undomanager
         JMenuItem mnRedo = new JMenuItem("Wiederherstellen");
         mnRedo.addActionListener(e -> {
-            if (undoMng.canRedo()){
-                undoMng.redo();
+            if (undoManager.canRedo()){
+                undoManager.redo();
             }
         }); 
         mnEdit.add(mnRedo);
@@ -237,6 +383,7 @@ public class SwingLayout {
         ImageIcon saveAsIcon = new ImageIcon("images/save_as.png"); // create an ImageIcon
         ImageIcon undoIcon = new ImageIcon("images/undo.png"); // create an ImageIcon
         ImageIcon redoIcon = new ImageIcon("images/redo.png"); // create an ImageIcon
+        ImageIcon printIcon = new ImageIcon("images/print.png"); // create an ImageIcon
 
         // New
         JButton btnNew = new JButton("");
@@ -266,8 +413,8 @@ public class SwingLayout {
         // Undo
         JButton btnUndo = new JButton("");
         btnUndo.addActionListener(e -> {
-            if(undoMng.canUndo()){
-                undoMng.undo();
+            if(undoManager.canUndo()){
+                undoManager.undo();
             }
         });
         btnUndo.setIcon(undoIcon);
@@ -276,30 +423,30 @@ public class SwingLayout {
         // Redo
         JButton btnRedo = new JButton("");
         btnRedo.addActionListener(e -> {
-            if(undoMng.canRedo()){
-                undoMng.redo();
+            if(undoManager.canRedo()){
+                undoManager.redo();
             }
         });
         btnRedo.setIcon(redoIcon);
         toolBar.add(btnRedo);
 
         // Bold
-        JButton boldBtn = new JButton("B");
-        boldBtn.setFont(new Font("Arial", Font.BOLD, 20));
-        boldBtn.addActionListener(e -> toggleStyle(StyleConstants.Bold));
-        toolBar.add(boldBtn);
+        JButton btnBold = new JButton("B");
+        btnBold.setFont(new Font("Arial", Font.BOLD, 20));
+        btnBold.addActionListener(e -> toggleStyle(StyleConstants.Bold));
+        toolBar.add(btnBold);
 
         // Italic
-        JButton italicBtn = new JButton("I");
-        italicBtn.setFont(new Font("Arial", Font.BOLD, 20));
-        italicBtn.addActionListener(e -> toggleStyle(StyleConstants.Italic));
-        toolBar.add(italicBtn);
+        JButton btnItalic = new JButton("I");
+        btnItalic.setFont(new Font("Arial", Font.BOLD, 20));
+        btnItalic.addActionListener(e -> toggleStyle(StyleConstants.Italic));
+        toolBar.add(btnItalic);
 
         // Undeline
-        JButton underlineBtn = new JButton("U");
-        underlineBtn.setFont(new Font("Arial", Font.BOLD, 20));
-        underlineBtn.addActionListener(e -> toggleStyle(StyleConstants.Underline));
-        toolBar.add(underlineBtn);
+        JButton btnUnderline = new JButton("U");
+        btnUnderline.setFont(new Font("Arial", Font.BOLD, 20));
+        btnUnderline.addActionListener(e -> toggleStyle(StyleConstants.Underline));
+        toolBar.add(btnUnderline);
 
         // Font Family
         String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
@@ -344,33 +491,97 @@ public class SwingLayout {
         toolBar.add(sizeCombo);
 
         // Color Chooser
-        colorBtn = new JButton();
-        colorBtn.setForeground(Color.BLACK); // เริ่มต้นให้เป็นสีดำ
-        colorBtn.setOpaque(true);
-        colorBtn.setBorderPainted(true);
-        colorBtn.setPreferredSize(new Dimension(35, 35)); // ขนาดปุ่มเล็กพอดีมือ
-        colorBtn.setMaximumSize(new Dimension(35, 35));
-        colorBtn.setMinimumSize(new Dimension(35, 35));
-        colorBtn.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+colorBtn = new JButton() {
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        colorBtn.addActionListener(e -> {
-        Color color = JColorChooser.showDialog(frame, "Choose Text Color", Color.BLACK);
-        if (color != null) {
-                StyledDocument doc = textArea.getStyledDocument();
-                SimpleAttributeSet style = new SimpleAttributeSet();
-                StyleConstants.setForeground(style, color);
-                doc.setCharacterAttributes(textArea.getSelectionStart(),
-                                           textArea.getSelectionEnd() - textArea.getSelectionStart(),
-                                           style, false);
-            colorBtn.setBackground(color);
+        // วาดวงกลมพื้นหลัง
+        if (getModel().isPressed()) {
+            g2.setColor(Color.LIGHT_GRAY);
+        } else {
+            g2.setColor(getBackground());
+        }
+        g2.fillOval(0, 0, getWidth(), getHeight());
+
+        g2.dispose();
+        super.paintComponent(g);
+    }
+
+    @Override
+    protected void paintBorder(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setColor(Color.GRAY);
+        g2.drawOval(0, 0, getWidth() - 1, getHeight() - 1);
+        g2.dispose();
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        return new Dimension(35, 35);
+    }
+
+    @Override
+    public boolean contains(int x, int y) {
+        Ellipse2D circle = new Ellipse2D.Float(0, 0, getWidth(), getHeight());
+        return circle.contains(x, y);
+    }
+};
+
+colorBtn.setOpaque(false);
+colorBtn.setContentAreaFilled(false);
+colorBtn.setBorderPainted(false); // วาดขอบเอง
+colorBtn.setForeground(Color.BLACK);
+
+colorBtn.addActionListener(e -> {
+    Color color = JColorChooser.showDialog(frame, "Choose Text Color", Color.BLACK);
+    if (color != null) {
+        StyledDocument doc = textArea.getStyledDocument();
+        SimpleAttributeSet style = new SimpleAttributeSet();
+        StyleConstants.setForeground(style, color);
+        doc.setCharacterAttributes(
+            textArea.getSelectionStart(),
+            textArea.getSelectionEnd() - textArea.getSelectionStart(),
+            style, false
+        );
+        colorBtn.setBackground(color);
+    }
+});
+
+toolBar.add(colorBtn);
+
+
+
+        // Print 
+        JButton btnPrint = new JButton("");
+        btnPrint.addActionListener(e -> {
+             try {
+                boolean complete = textArea.print(); // สั่งพิมพ์ข้อความใน JTextPane
+                if (complete) {
+                    JOptionPane.showMessageDialog(null, "Druckvorgang abgeschlossen", "Fertig", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(null, "Druckvorgang abgebrochen","Abgebrochen", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (PrinterException ex) {
+                JOptionPane.showMessageDialog(null, "Druckfehler" + ex.getMessage(), "Fehler", JOptionPane.ERROR_MESSAGE);
             }
         });
-        toolBar.add(colorBtn);
+        btnPrint.setIcon(printIcon);
+        toolBar.add(btnPrint);
 
     }
 
     private void resetTextStyle() {
-        if (textArea == null) return;
+        // if (textArea == null) return;
+
+        // 5. Reset undo manager history, to prevent error after reset
+        if (undoManager != null) {
+            undoManager.discardAllEdits();
+        }
+
+
 
         // 1. create a new StyledDocument and reassign it to the doc
         // This will NOT carry styles and undo history to the new document
@@ -378,11 +589,14 @@ public class SwingLayout {
         textArea.setDocument(newDoc);
         doc = newDoc;
 
+        // 3. ต่อ listener ให้กับ UndoManager ใหม่
+        doc.addUndoableEditListener(e -> undoManager.addEdit(e.getEdit()));
+
         // 2. create default style
         SimpleAttributeSet defaultStyle = new SimpleAttributeSet();
         StyleConstants.setFontFamily(defaultStyle, "Arial");
         StyleConstants.setFontSize(defaultStyle, 12);
-        StyleConstants.setBackground(defaultStyle, Color.BLACK); //text
+        StyleConstants.setForeground(defaultStyle, Color.BLACK); //text
         StyleConstants.setBold(defaultStyle, false);
         StyleConstants.setItalic(defaultStyle, false);
         StyleConstants.setUnderline(defaultStyle, false);
@@ -391,16 +605,16 @@ public class SwingLayout {
         doc = textArea.getStyledDocument();
         doc.setCharacterAttributes(0, doc.getLength(), defaultStyle, true);
         
+                    // ✅ reset caret input attributes
+         textArea.setCharacterAttributes(defaultStyle, true);
+
         // 4. Reset GUI Element
         // reset JComboBox
         if (fontCombo != null) fontCombo.setSelectedItem("Arial");
         if (sizeCombo != null) sizeCombo.setSelectedItem(12);
         if (colorBtn != null) colorBtn.setBackground(Color.BLACK);
 
-        // 5. Reset undo manager history, to prevent error after reset
-        if (undoMng != null) {
-            undoMng.discardAllEdits();
-        }
+
 
 }
 
@@ -513,7 +727,7 @@ public class SwingLayout {
                 // ใส่ UndoManager ใหม่ให้กับ doc
                 doc.addUndoableEditListener(new UndoableEditListener() {
                     public void undoableEditHappened(UndoableEditEvent e) {
-                        undoMng.addEdit(e.getEdit());
+                        undoManager.addEdit(e.getEdit());
                     }
                 });
                 
@@ -530,7 +744,7 @@ public class SwingLayout {
         }
     }
 
-    /* inside here works with JTextArea but not with JTextPane 
+    /* codes here works with JTextArea but not with JTextPane 
     private void openFile() {
     JFileChooser fileChooser = new JFileChooser();
     fileChooser.setDialogTitle("Datei öffnen");
@@ -609,58 +823,13 @@ public class SwingLayout {
         );
 
         if (choice == JOptionPane.YES_OPTION) {
-            textArea.setText(""); // empty the text area
+            // textArea.setText(""); // empty the text area
             currentFile = null;     // empty the current file path
             lbInfo.setText("Neue Datei"); // reset the file path label
 
             resetTextStyle();
             
         }
-    }
-
-    private void updateStyleControls() {
-
-        // ✅ บอกว่ากำลังอัปเดต
-    isUpdatingStyle = true;
-
-        if (textArea.getDocument().getLength() == 0) {
-        // ถ้า document ว่าง ให้ใช้ค่า default
-        if (fontCombo != null) fontCombo.setSelectedItem("Arial");
-        if (sizeCombo != null) sizeCombo.setSelectedItem(12);
-        if (colorBtn != null) colorBtn.setBackground(Color.BLACK);
-        isUpdatingStyle = false; // ✅ อย่าลืมปิด flag
-        return; // ✅ จบเลย ไม่ต้องอ่านจาก document
-    }
-        
-        int pos = textArea.getCaretPosition();
-
-        StyledDocument doc = textArea.getStyledDocument();
-        Element element;
-        if (pos > 0) {
-            element = doc.getCharacterElement(pos - 1);
-        } else {
-            element = doc.getCharacterElement(pos);
-        }
-
-        AttributeSet as = element.getAttributes();
-
-        // อัปเดต Font
-        String font = StyleConstants.getFontFamily(as);
-        if (fontCombo != null && !font.equals(fontCombo.getSelectedItem())) {
-            fontCombo.setSelectedItem(font);
-        }
-
-        // อัปเดต Size
-        int size = StyleConstants.getFontSize(as);
-        if (sizeCombo != null && size != (Integer) sizeCombo.getSelectedItem()) {
-            sizeCombo.setSelectedItem(size);
-        }
-
-        // สามารถอัปเดตสีได้ด้วยถ้ามีปุ่มเลือกสี
-        Color color = StyleConstants.getForeground(as);
-        colorBtn.setBackground(color);
-        // ✅ เสร็จแล้วปิด flag
-         isUpdatingStyle = false;
     }
 
     // ### Main ### //
